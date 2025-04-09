@@ -1,0 +1,152 @@
+@startuml 
+
+title WarmHouse_Devices_Code_Level
+
+skinparam backgroundColor #F8F8F8
+skinparam classBackgroundColor #FFFFFF
+skinparam classBorderColor #333333
+skinparam arrowColor #333333
+skinparam classFontSize 12
+skinparam packageFontSize 14
+
+package "com.warmhouse.devices" {
+  package "controllers" {
+    class DeviceController {
+      +registerDevice(deviceDto): DeviceDTO
+      +updateDevice(id, deviceDto): DeviceDTO
+      +getDevice(id): DeviceDTO
+      +listUserDevices(userId): List<DeviceDTO>
+      +getDeviceMetrics(id): List<MetricDTO>
+    }
+  }
+
+  package "services" {
+    class DeviceService {
+      -deviceRepository: DeviceRepository
+      -metricRepository: MetricRepository
+      -messageBrokerService: MessageBrokerService
+      +registerDevice(deviceDto): Device
+      +updateDevice(id, deviceDto): Device
+      +getUserDevices(userId): List<Device>
+      +processIncomingMetric(metricDto): void
+    }
+
+    class MessageBrokerService {
+      -mqttClient: MqttClient
+      +subscribeToDeviceTopics()
+      +publishCommand(deviceId, command)
+      +addMetricListener(handler)
+    }
+  }
+
+  package "repositories" {
+    interface DeviceRepository {
+      +findById(id): Optional<Device>
+      +findByUserId(userId): List<Device>
+      +save(device): Device
+      +update(device): Device
+    }
+
+    interface MetricRepository {
+      +findByDeviceId(deviceId): List<Metric>
+      +save(metric): Metric
+    }
+  }
+
+  package "models" {
+    class Device {
+      <<Entity>>
+      -id: Integer
+      -userId: Integer
+      -type: String
+      -location: String
+      -status: String
+      -lastUpdateDateTime: Instant
+      +getters/setters()
+    }
+
+    class Metric {
+      <<Entity>>
+      -id: Integer
+      -deviceId: Integer
+      -type: String
+      -value: String
+      -timestamp: Instant
+      +getters/setters()
+    }
+
+    class DeviceDTO {
+      <<DTO>>
+      -id: Integer
+      -userId: Integer
+      -type: String
+      -location: String
+      -status: String
+      -lastUpdateDateTime: String
+      +toEntity()
+      +fromEntity()
+    }
+
+    class MetricDTO {
+      <<DTO>>
+      -deviceId: Integer
+      -type: String
+      -value: String
+      -timestamp: String
+      +toEntity()
+      +fromEntity()
+    }
+  }
+
+  package "config" {
+    class MqttConfig {
+      +brokerUrl: String
+      +mqttClient(): MqttClient
+    }
+
+    class DatabaseConfig {
+      +jdbcUrl: String
+      +dataSource(): DataSource
+    }
+  }
+}
+
+' Связи между компонентами
+DeviceController --> DeviceService : uses
+DeviceController --> DeviceDTO : returns
+DeviceController --> MetricDTO : returns
+
+DeviceService --> DeviceRepository : depends on
+DeviceService --> MetricRepository : depends on
+DeviceService --> MessageBrokerService : depends on
+DeviceService --> Device : converts to/from
+DeviceService --> Metric : converts to/from
+
+MessageBrokerService --> MqttConfig : uses
+MessageBrokerService --> Metric : processes
+
+DeviceRepository --> Device : manages
+MetricRepository --> Metric : manages
+
+Device ||--o{ Metric : "publishes"
+Device --> User : "belongs to"
+
+note right of Device
+  Соответствует ER-диаграмме:
+  * id : integer
+  * userid : integer
+  * type : varchar
+  * location : varchar
+  * status : varchar
+  * lastUpdateDateTime : timestamp
+end note
+
+note right of Metric
+  Соответствует ER-диаграмме:
+  * id : integer
+  * deviceid : integer
+  * type : varchar
+  * value : varchar
+end note
+
+@enduml
