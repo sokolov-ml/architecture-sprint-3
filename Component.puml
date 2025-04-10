@@ -1,0 +1,86 @@
+@startuml
+title WarmHouse Component Diagram
+
+top to bottom direction
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+System_Boundary(WarmHouse, "Тёплый дом") {
+
+  Boundary(ЛК, "Личный кабинет") {
+    Container(apigateway, "API Gateway", "Kong", "IAM, RL, Reverse Proxy")  
+    Container(WebApp, "Веб-приложение", "TS, React", "ЛК Пользователя")  
+    Container(BFF, "BFF", "Java", "API для фронта") {
+      Component(UserProfileAPI, "UserProfileAPI", "Java", "API профиля пользователя")
+      Component(DevicesAPI, "DevicesAPI", "Java", "API управления устройствами")
+      Component(BillingAPI, "BillingAPI", "Java", "API биллинга")
+      Component(OperationsAPI, "OperationsAPI", "Java", "API эксплуатации")
+    }
+  }
+
+  Boundary(Устройства, "Устройства") {
+    Container(Devices, "Управление устройствами", "Java", "Регистрация устройств, метрики, команды") {
+      Component(DeviceRegistry, "DeviceRegistry", "Java", "Регистрация устройств")
+      Component(MetricsProcessor, "MetricsProcessor", "Java", "Обработка метрик")
+      Component(CommandService, "CommandService", "Java", "Управление командами")
+    }
+    Container(MessageBroker, "MessageBroker", "MQTT", "Шина обмена сообщениями")
+    ContainerDb(DevicesDB, "DevicesDB", "MongoDB", "Хранение информации об устройствах")
+    ContainerDb(MetricsDB, "MetricsDB", "CassandraDB", "Хранение показаний")
+  }
+
+  Boundary(Пользователи, "Пользователи") {
+    Container(Users, "Управление пользователями", "Java", "Регистрация, аутентификация") {
+      Component(AuthService, "AuthService", "Java", "Аутентификация")
+      Component(UserService, "UserService", "Java", "Управление пользователями")
+      Component(AccessControl, "AccessControl", "Java", "Управление доступом")
+    }
+    ContainerDb(UsersDB, "UsersDB", "PostgreSQL", "Хранение данных пользователей")
+  }
+
+  Boundary(Биллинг, "Биллинг") {
+    Container(Billing, "Биллинг сервис", "Java", "Управление платежами") {
+      Component(TariffService, "TariffService", "Java", "Управление тарифами")
+      Component(PaymentService, "PaymentService", "Java", "Обработка платежей")
+      Component(InvoiceService, "InvoiceService", "Java", "Генерация счетов")
+    }
+    ContainerDb(BillingDB, "BillingDB", "PostgreSQL", "Хранение платежных данных")
+  }
+
+  Boundary(Эксплуатация, "Эксплуатация") {
+    Container(Operations, "Сервис эксплуатации", "Java", "Техническое обслуживание") {
+      Component(SupportService, "SupportService", "Java", "Обработка обращений")
+      Component(IncidentService, "IncidentService", "Java", "Управление инцидентами")
+      Component(MonitoringService, "MonitoringService", "Java", "Мониторинг системы")
+    }
+    ContainerDb(OperationsDB, "OperationsDB", "PostgreSQL", "Хранение данных ТО")
+  }
+}
+System_Ext(controllers, "Управляющие устройства", "Отопительные приборы")
+System_Ext(sensors, "Датчики", "Датчики температуры")
+System_Ext(payment_providers, "Платежные системы", "Внешние процессинговые сервисы")
+
+Rel(WebApp, BFF, "API calls", "HTTP")
+Rel(BFF, Users, "Auth", "HTTP")
+Rel(BFF, Devices, "Device management", "HTTP")
+Rel(BFF, Billing, "Billing operations", "HTTP")
+Rel(BFF, Operations, "Support requests", "HTTP")
+
+Rel(Users, UsersDB, "Data access", "JDBC")
+Rel(Devices, DevicesDB, "Data access", "JDBC")
+Rel(Devices, MetricsDB, "Metrics storage", "JDBC")
+Rel(Billing, BillingDB, "Data access", "JDBC")
+Rel(Operations, OperationsDB, "Data access", "JDBC")
+
+Rel(Billing, Users, "GET", "sync, HTTP")
+Rel(Billing, Devices, "GET", "sync, HTTP")
+Rel(Billing, payment_providers, "GET/POST", "sync, HTTP")
+
+Rel(Devices, MessageBroker, "Commands/Metrics", "MQTT")
+Rel(MessageBroker, DeviceRegistry, "Device registration", "MQTT")
+Rel(MessageBroker, MetricsProcessor, "Metrics processing", "MQTT")
+Rel(CommandService, MessageBroker, "Command dispatch", "MQTT")
+
+Rel(sensors, MessageBroker, "Metrics push", "MQTT")
+Rel(MessageBroker, controllers, "Commands push", "MQTT")
+@enduml
