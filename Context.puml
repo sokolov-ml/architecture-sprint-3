@@ -11,6 +11,7 @@ System(warmhouse, "Теплый дом", "Система управления м
 
 System_Ext(controllers, "Внешние устройства", "Управляемые отопительные приборы")
 System_Ext(sensors, "Внешние датчики", "Датчики температуры")
+System_Ext(payment_providers, "Платежные системы", "Внешние процессинговые сервисы")
 
 Rel(user, warmhouse, "Получает информацию с датчиков")
 Rel(user, warmhouse, "Управляет устройствами")
@@ -18,5 +19,6 @@ Rel(user, warmhouse, "Управляет устройствами")
 Rel(admin,warmhouse,"Регистрирует новые устройства")
 Rel(warmhouse,sensors,"Запрашивает показания")
 Rel(warmhouse,controllers,"Передаёт команды")
+Rel(warmhouse,payment_providers,"Проведение платежей")
 
 @enduml
